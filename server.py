@@ -4,11 +4,13 @@ Tambem fica responsavel pela parte do processamento de listar os usuarios ativos
 """
 
 import sys
-import json
 import socket
 import threading
 import select as s
-import datetime as dt
+from datetime import datetime 
+import pickle
+from message import Message
+
 HOST = ''
 PORT = 5000
 ENCODING = 'utf-8'
@@ -16,7 +18,7 @@ SERVER_ID = 0 # Mudar para string? TODO
 
 # Lista de comandos
 EXIT_KEYWORD = '$quit'
-LIST_USERS = { '$list users', '$lu'}
+LIST_USERS = ['$list users', '$lu']
 CHAT_REQUEST = '$chat'
 
 
@@ -28,6 +30,9 @@ connections = {}
 usernames = {}
 # Lock para acessar o dicionario de conexoes
 lock = threading.Lock()
+
+# username to sock
+receivers = dict()
 
 def initServer():
     """Inicia o socket: internet IPv4 + TCP"""
@@ -46,39 +51,17 @@ def acceptConnection(sckt):
     """Aceita a conexao com o cliente"""
 
     newSckt, address = sckt.accept()
-    username = newSckt.recv(1024).decode(ENCODING)
+    data = newSckt.recv(1024)
+    message: Message = pickle.loads(data)
 
-    lock.acquire()
-    usernames[newSckt] = username
-    lock.release()
+    if message.content == '$register receiver':
+        lock.acquire()
+        receivers[message.sender] = newSckt
+        lock.release()
 
-    print(f'Conectado com: {str(address)}, username: {username}') # Log de conexao com endereco <address>
-
-    listActiveUsers(newSckt)
+    print(f'Conectado com: {str(address)}, username: {message.sender} // {message.content}') # Log de conexao com endereco <address>
 
     return newSckt, address
-
-def listActiveUsers(cliSckt):
-    """Envia para o cliente uma lista com todos os usernames de usuarios ativos"""
-
-    # objeto json { 'user_id': "id", 'timestamp': "datetime", 'to': "id", 'content': "data" }
-    msg = '''
-    {
-        "user_id": "Server",
-        "timestamp": "",
-        "to": "",
-        "content": []
-    }
-    '''
-
-    msg = json.loads(msg)
-    msg['timestamp'] = dt.datetime.now()
-    msg['to'] = str(usernames.get(cliSckt))
-    msg['content'] = usernames.values()
-
-    full_msg = json.dumps(msg)
-    cliSckt.sendall(full_msg.encode(ENCODING))
-    pass 
 
 def internalCommandHandler(cmd: str, sckt, clients: list):
     if cmd == EXIT_KEYWORD:
@@ -91,31 +74,21 @@ def internalCommandHandler(cmd: str, sckt, clients: list):
     elif cmd == CHAT_REQUEST:
         pass
 
-def resolveJSON(request):
-    """Recebe a string em formato JSON e acessa seu conteudo"""
-    data = json.loads(request)
-    user_id = data['user_id']
-    timestamp = data['timestamp']
-    to = data['to']
-    content = data['content']
-    
-    return user_id, timestamp, to, content
-
 def requestHandler(cliSckt, address):
     """Recebe requests dos clientes conectados"""
-
+    # Recebe uma mensagem
+    # se o receiver for SERVER, então é um comando. tem que tratar
+    # se o receiver for outro, então é uma mensagem pra alguém. acessa o map de user e redireciona
     while True:
-        request = cliSckt.recv(1024).decode(ENCODING)
-        u,ts,t,c = resolveJSON(request)
+        data = cliSckt.recv(1024)
+        message: Message = pickle.loads(data)
 
-        if msg in LIST_USERS:
-            listActiveUsers(cliSckt)
-        elif msg.split(" ")[0] == CHAT_REQUEST:
-            target_user = msg.split(" ")[1]
-            target_sckt = list(usernames.keys())[list(usernames.values()).index(target_user)]
-            target_addr = connections.get(target_sckt)
-
-    pass
+        if message.receiver == 'SERVER':
+            print('Tratar comando do usuário')
+            #tratar comando
+        else:
+            addressee_sock = receivers[message.receiver]
+            addressee_sock.send(data)
 
 def main():
     try:
