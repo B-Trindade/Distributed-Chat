@@ -5,59 +5,101 @@ import pickle
 import threading
 
 HOST = 'localhost' # maquina onde esta o par passivo
-PORT = 5000        # porta que o par passivo esta escutando
+PORT = 5002        # porta que o par passivo esta escutando
 EXIT_CODE = 'exit'
 ENCODING = 'utf-8'
+
+SERVER_USERNAME = 'SERVER'
+
+# Commands
+SERVER_CMDS = ['$lu', '$list users']
+CMD_CHAT = '$chat'
+CMD_END_CHAT = '$end'
+CMD_POSTBOX = '$postbox'
+CMD_EXIT = '$quit'
+
+current_chat = None
+postbox = []
+username: str
+
+def read_input():
+    while True:
+        text = input('>')
+        if len(text) > 0:
+            return text
+
+def display_message(message: Message, show_time = False):
+    time = f'[{message.timestamp}] ' if show_time else ''
+    print(f'{time}{message.sender}: {message.content}')
 
 def create_join_message(sock_type: str):
     return Message(username, 'SERVER', f'$register {sock_type}', datetime.now())
 
 def listen_messages(sock):
+    global current_chat
+    global postbox
     while True:
         data = sock.recv(1024)
         message: Message = pickle.loads(data)
-        print(message)
+        if current_chat is None:
+            display_message(message)
+        else:
+            if message.sender == current_chat:
+                display_message(message)
+            else:
+                postbox.append(message)
+
+def inside_chat(addressee: str, sender_sock):
+    global current_chat
+    current_chat = addressee
+    print('--------------------------------')
+    print(f'Você agora está em um chat com {addressee}. Digite aqui para enviar mensagens direto para este usuário!\n')
+    while True:
+        text = read_input()
+        if text == CMD_END_CHAT:
+            current_chat = None
+            break
+        message = Message(username, addressee, text, datetime.now())
+        sender_sock.send(pickle.dumps(message))
 
 def send_messages(sock):
+    global postbox
     while True:
-        addressee = input()
-        text = input()
-        message = Message(username, addressee, text, datetime.now())
-        sock.send(pickle.dumps(message))
+        text: str = read_input()
+        if text in SERVER_CMDS:
+            message = Message(username, SERVER_USERNAME, text, datetime.now())
+            sock.send(pickle.dumps(message))
+        else:
+            if text.startswith(CMD_CHAT):
+                addressee = text.split(' ')[1]
+                inside_chat(addressee, sock)
+                print(f'Chat encerrado. Você possui {len(postbox)} novas mensagens. Digite {CMD_POSTBOX} para visualizá-las!\n')
+            elif text == CMD_POSTBOX:
+                for m in postbox:
+                    display_message(m, True)
+                postbox = []
 
-sender_sock = socket.socket()
-sender_sock.connect((HOST, PORT))
+def main():
+    global username
 
-receiver_sock = socket.socket()
-receiver_sock.connect((HOST, PORT))
+    sender_sock = socket.socket()
+    sender_sock.connect((HOST, PORT))
 
-username = input('Digite o nome de usuário: ')
-join_sender = create_join_message('sender')
-join_receiver = create_join_message('receiver')
+    receiver_sock = socket.socket()
+    receiver_sock.connect((HOST, PORT))
 
-receiver_sock.send(pickle.dumps(join_receiver))
-sender_sock.send(pickle.dumps(join_sender))
+    username = input('Digite o nome de usuário: ')
+    join_sender = create_join_message('sender')
+    join_receiver = create_join_message('receiver')
 
-thread_receiver = threading.Thread(target=listen_messages, args=(receiver_sock,))
-thread_receiver.start()
+    receiver_sock.send(pickle.dumps(join_receiver))
+    sender_sock.send(pickle.dumps(join_sender))
 
+    thread_receiver = threading.Thread(target=listen_messages, args=(receiver_sock,))
+    thread_receiver.start()
 
-thread_sender = threading.Thread(target=send_messages, args=(sender_sock,))
-thread_sender.start()
+    thread_sender = threading.Thread(target=send_messages, args=(sender_sock,))
+    thread_sender.start()
 
-
-# while True:
-#     # Solicita o input do usuário
-#     command = read_input(f'Digite o nome do arquivo (ou "{EXIT_CODE}" para encerrar): ')
-#     if command == EXIT_CODE:
-#         break
-
-#     # Envia o comando para o servidor
-#     sock.send(str.encode(f'{file_name}\n{search_query}', encoding=ENCODING))
-#     print('Enviado')
-#     # Imprime a resposta
-#     msg = sock.recv(1024)
-#     print(str(msg,  encoding=ENCODING))
-
-# # encerra a conexao
-# sock.close() 
+if __name__ == '__main__':
+    main()

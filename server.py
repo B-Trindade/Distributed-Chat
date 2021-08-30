@@ -12,7 +12,7 @@ import pickle
 from message import Message
 
 HOST = ''
-PORT = 5000
+PORT = 5002
 ENCODING = 'utf-8'
 SERVER_ID = 0 # Mudar para string? TODO
 
@@ -84,8 +84,12 @@ def requestHandler(cliSckt, address):
         message: Message = pickle.loads(data)
 
         if message.receiver == 'SERVER':
-            print('Tratar comando do usuário')
-            #tratar comando
+            if message.content in LIST_USERS:
+                response = Message('SERVER', message.sender, list(receivers.keys()), datetime.now())
+                print('enviando de volta')
+                receivers[message.sender].send(pickle.dumps(response))
+                print('enviei')
+            #TODO: tratar comando
         else:
             addressee_sock = receivers[message.receiver]
             addressee_sock.send(data)
