@@ -23,19 +23,32 @@ postbox = []
 username: str
 
 def read_input():
+    '''Reads the input unitl it's a valid input.
+    '''
     while True:
         text = input('>')
         if len(text) > 0:
             return text
 
 def display_message(message: Message, show_time = False):
+    '''Display the message on the output, showing the content and the sender. 
+    Can also shows the timestamp of the message.
+    '''
     time = f'[{message.timestamp}] ' if show_time else ''
     print(f'{time}{message.sender}: {message.content}')
 
 def create_join_message(sock_type: str):
+    '''Create a message to register the socket on the server.
+    '''
     return Message(username, 'SERVER', f'$register {sock_type}', datetime.now())
 
 def listen_messages(sock):
+    '''Listens messages received from the server.
+    If the client is inside a chat with the message sender or is not inside any chat, 
+    displays the message on the screen.
+    Otherwise, puts the message in the postbox.
+    This function should be passed to the receiver_sock's Thread.
+    '''
     global current_chat
     global postbox
     while True:
@@ -50,6 +63,9 @@ def listen_messages(sock):
                 postbox.append(message)
 
 def inside_chat(addressee: str, sender_sock):
+    '''Sends every text typed by the user to the server, addreesseed to the addressee.
+    When the user types the end command, the chat is ended.
+    '''
     global current_chat
     current_chat = addressee
     print('--------------------------------')
@@ -63,8 +79,14 @@ def inside_chat(addressee: str, sender_sock):
         sender_sock.send(pickle.dumps(message))
 
 def send_messages(sock):
+    '''Reads the user input and treat it. 
+    If it is a SERVER command, sends it to the server.
+    Otherwise, treats it locally.
+    This function should be passed to the sender_sock's Thread.
+    '''
     global postbox
     while True:
+        #TODO: treats exit command
         text: str = read_input()
         if text in SERVER_CMDS:
             message = Message(username, SERVER_USERNAME, text, datetime.now())
@@ -82,16 +104,19 @@ def send_messages(sock):
 def main():
     global username
 
+    # creates the socket that will be responsible for sending messages to the server
     sender_sock = socket.socket()
     sender_sock.connect((HOST, PORT))
 
+    # created the socket that will be responsible for receiving messages from the server
     receiver_sock = socket.socket()
     receiver_sock.connect((HOST, PORT))
 
+    # reads the username and send two messages to the server, 
+    # indicating which socket is the sender and receiver
     username = input('Digite o nome de usuário: ')
     join_sender = create_join_message('sender')
     join_receiver = create_join_message('receiver')
-
     receiver_sock.send(pickle.dumps(join_receiver))
     sender_sock.send(pickle.dumps(join_sender))
 
