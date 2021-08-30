@@ -94,12 +94,23 @@ def send_messages(sock):
         else:
             if text.startswith(CMD_CHAT):
                 addressee = text.split(' ')[1]
-                inside_chat(addressee, sock)
-                print(f'Chat encerrado. Você possui {len(postbox)} novas mensagens. Digite {CMD_POSTBOX} para visualizá-las!\n')
+
+                # Verifica se usuario escolheu um cliente diferente de si mesmo para iniciar um chat
+                if addressee == username:
+                    print(f'Função de chat com "{username}" não suportada. Por favor, escolha um usuário diferente de si para conversar.')
+                else:
+                    inside_chat(addressee, sock)
+                    print(f'Chat encerrado. Você possui {len(postbox)} novas mensagens. Digite {CMD_POSTBOX} para visualizá-las!\n')
             elif text == CMD_POSTBOX:
                 for m in postbox:
                     display_message(m, True)
                 postbox = []
+
+def username_available(username: str):
+    '''Sends a message to SERVER in order to enforce username uniqueness.'''
+
+
+    pass
 
 def main():
     global username
@@ -112,9 +123,12 @@ def main():
     receiver_sock = socket.socket()
     receiver_sock.connect((HOST, PORT))
 
-    # reads the username and send two messages to the server, 
-    # indicating which socket is the sender and receiver
+    # reads the username and verifies availability. If not, user must enter a new value   
     username = input('Digite o nome de usuário: ')
+    while not username_available(username):
+        username = input('Nome de usuário indisponível. Digite outro nome de usuário: ')
+
+    # send two messages to the server, indicating which socket is the sender and receiver
     join_sender = create_join_message('sender')
     join_receiver = create_join_message('receiver')
     receiver_sock.send(pickle.dumps(join_receiver))

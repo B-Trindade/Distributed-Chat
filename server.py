@@ -21,18 +21,26 @@ EXIT_KEYWORD = '$quit'
 LIST_USERS = ['$list users', '$lu']
 CHAT_REQUEST = '$chat'
 
-
 # Entradas para escuta do select
 entry_points = [sys.stdin]
 # Mapa de conexoes com o servidor
 connections = {}
-# Mapa de clientes com usernames
-usernames = {}
+# Lista de usernames
+usernames = []
 # Lock para acessar o dicionario de conexoes
 lock = threading.Lock()
 
 # username to sock
 receivers = dict()
+
+def validateUsername(username: str) -> bool:
+    '''TODO'''
+
+    if username in usernames:
+        return False
+    else:
+        usernames.append(username)
+        return True
 
 def initServer():
     """Inicia o socket: internet IPv4 + TCP"""
@@ -71,8 +79,6 @@ def internalCommandHandler(cmd: str, sckt, clients: list):
         sys.exit()
     elif cmd in LIST_USERS:
         user_list = listActiveUsers()
-    elif cmd == CHAT_REQUEST:
-        pass
 
 def requestHandler(cliSckt, address):
     """Recebe requests dos clientes conectados"""
