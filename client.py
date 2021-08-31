@@ -99,12 +99,9 @@ def send_messages(sock):
             ack: Message = pickle.loads(data)
             if ack.content == '200':
                 sock.close()
-                raise SystemExit()
+                sys.exit()
             elif ack.content == '500':
                 print('SERVER> Erro não esperado. Tente novamente em alguns instantes.')
-            else:
-                print('Erro crítico! Encerrando todos os serviços...')
-                #TODO maybe?
         elif text in CMD_LIST_USERS:
             message = Message(username, SERVER_NAME, text, datetime.now())
             sock.send(pickle.dumps(message))
