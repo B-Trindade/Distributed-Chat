@@ -4,6 +4,7 @@ from message import Message
 from datetime import datetime
 import pickle
 import threading
+import sys
 
 HOST = 'localhost' # maquina onde esta o par passivo
 
@@ -45,6 +46,9 @@ def receive_messages(sock):
     global postbox
     while True:
         data = sock.recv(1024)
+        if not data:
+            print('O servidor terminou inesperadamente. Encerrando execução.')
+            sys.exit()
         message: Message = pickle.loads(data)
         if current_chat is None:
             display_message(message)
