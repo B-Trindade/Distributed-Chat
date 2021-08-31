@@ -18,13 +18,11 @@ HOST = ''
 entry_points = [sys.stdin]
 # Mapa de conexoes com o servidor
 connections = {}
-# Lista de usernames
-usernames = []
 # Lock para acessar o dicionario de conexoes
 lock = threading.Lock()
 
-# username to sock
-receivers = dict()
+# Map de username para socket
+usernames = dict()
 
 def initServer():
     """Inicia o socket: internet IPv4 + TCP"""
@@ -41,7 +39,7 @@ def initServer():
 
 def acceptConnection(sckt):
     """Aceita a conexao com o cliente"""
-    global receivers
+    global usernames
     newSckt, address = sckt.accept()
 
     while True:
@@ -49,9 +47,9 @@ def acceptConnection(sckt):
         message: Message = pickle.loads(data)
 
         new_username = message.content
-        if new_username not in receivers.keys() and new_username != SERVER_NAME:
+        if new_username not in usernames.keys() and new_username != SERVER_NAME:
             lock.acquire()
-            receivers[message.content] = newSckt
+            usernames[message.content] = newSckt
             lock.release()
             response = Message(SERVER_NAME, new_username, True, datetime.now())
             newSckt.send(pickle.dumps(response))
@@ -80,25 +78,36 @@ def requestHandler(cliSckt, address):
     # se o receiver for outro, então é uma mensagem pra alguém. acessa o map de user e redireciona
     while True:
         data = cliSckt.recv(1024)
+
+        # Se o usuário terminou de forma inesperada
+        if not data:
+            sender = list(usernames.keys())[list(usernames.values()).index(cliSckt)]
+            print(f'O usuário {sender} encerrou de forma inesperada.')
+            lock.acquire()
+            usernames.pop(sender)
+            lock.release()
+            cliSckt.close()
+            break
+        
         message: Message = pickle.loads(data)
 
         if message.receiver == 'SERVER':
             if message.content in CMD_LIST_USERS:
-                response = Message('SERVER', message.sender, list(receivers.keys()), datetime.now())
-                receivers[message.sender].send(pickle.dumps(response))
+                response = Message('SERVER', message.sender, list(usernames.keys()), datetime.now())
+                usernames[message.sender].send(pickle.dumps(response))
                 print(f'Lista de usuários enviada para {message.sender}')
             elif message.content == CMD_QUIT:
                 # Garante que o server pode enviar o ack apos deletar registros do cliente
                 sender = message.sender
-                sender_sock = receivers[sender]
+                sender_sock = usernames[sender]
 
                 # Envia sinal de acknowladge para que cliente desconecte: 200 = OK, 500 = Erro
                 lock.acquire()
-                if receivers.pop(sender, False):
+                if usernames.pop(sender, False):
+                    print(f'O usuário {message.sender} encerrou com sucesso.')
                     lock.release()
                     response = Message('SERVER', sender, '200', datetime.now())
                     sender_sock.send(pickle.dumps(response))
-
                     cliSckt.close()
                     break
                 else:
@@ -106,12 +115,12 @@ def requestHandler(cliSckt, address):
                     response = Message('SERVER', sender, '500', datetime.now())
                     sender_sock.send(pickle.dumps(response))
         else:
-            if message.receiver not in receivers.keys():
+            if message.receiver not in usernames.keys():
                 response = Message(SERVER_NAME, message.sender, 
                     f'O usuário {message.receiver} não está mais disponível.', datetime.now())
                 cliSckt.send(pickle.dumps(response))
             else:
-                addressee_sock = receivers[message.receiver]
+                addressee_sock = usernames[message.receiver]
                 addressee_sock.send(data)
 
 def main():

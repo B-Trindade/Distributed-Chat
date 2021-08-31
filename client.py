@@ -81,7 +81,6 @@ def send_messages(sock):
     This function should be passed to the sender_sock's Thread.
     '''
     global postbox
-    global threads
 
     while True:
         text: str = read_input('>')
@@ -125,7 +124,6 @@ def send_messages(sock):
 
 def main():
     global username
-    global threads
 
     # created the socket that will be responsible for receiving messages from the server
     sock = socket.socket()
@@ -143,7 +141,6 @@ def main():
             print('Nome de usuário indisponível.')
 
     thread_receiver = threading.Thread(target=receive_messages, args=(sock,))
-    thread_receiver.daemon = True
     thread_receiver.start()
 
     thread_sender = threading.Thread(target=send_messages, args=(sock,))
