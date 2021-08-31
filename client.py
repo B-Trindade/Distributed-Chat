@@ -47,7 +47,7 @@ def receive_messages(sock):
     while True:
         data = sock.recv(1024)
         if not data:
-            print('O servidor terminou inesperadamente. Encerrando execução.')
+            print('A conexão com o servidor foi encerrada.')
             sys.exit()
         message: Message = pickle.loads(data)
         if current_chat is None:
@@ -69,7 +69,8 @@ def inside_chat(addressee: str, sender_sock):
     lock.release()
 
     print('--------------------------------')
-    print(f'Você agora está em um chat com {addressee}. Digite aqui para enviar mensagens direto para este usuário!\n')
+    print(f'Você agora está em um chat com {addressee}. Digite aqui para enviar mensagens direto para este usuário!\n'
+    f'Digite {CMD_END_CHAT} para sair deste chat.\n')
     while True:
         text = read_input('>')
         if text == CMD_END_CHAT:
