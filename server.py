@@ -3,6 +3,7 @@ Server recebe novas conexoes de usuarios a qualquer momento.
 Tambem fica responsavel pela parte do processamento de listar os usuarios ativos
 """
 
+from constants import SERVER_PORT
 import sys
 import socket
 import threading
@@ -12,8 +13,6 @@ import pickle
 from message import Message
 
 HOST = ''
-PORT = 5002
-ENCODING = 'utf-8'
 SERVER_ID = 0 # Mudar para string? TODO
 
 # Lista de comandos
@@ -39,7 +38,7 @@ def initServer():
     # Default: socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sckt = socket.socket()  # Descritor socket
 
-    sckt.bind((HOST, PORT))
+    sckt.bind((HOST, SERVER_PORT))
     sckt.listen(10)
 
     # Medida preventiva contra falhas entre a chamada de s.select() e sckt.accept()

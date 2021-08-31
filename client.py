@@ -1,3 +1,4 @@
+from constants import CMD_CHAT, CMD_END_CHAT, CMD_LIST_USERS, CMD_POSTBOX, SERVER_NAME, SERVER_PORT
 import socket
 from message import Message
 from datetime import datetime
@@ -5,18 +6,6 @@ import pickle
 import threading
 
 HOST = 'localhost' # maquina onde esta o par passivo
-PORT = 5002        # porta que o par passivo esta escutando
-EXIT_CODE = 'exit'
-ENCODING = 'utf-8'
-
-SERVER_USERNAME = 'SERVER'
-
-# Commands
-SERVER_CMDS = ['$lu', '$list users']
-CMD_CHAT = '$chat'
-CMD_END_CHAT = '$end'
-CMD_POSTBOX = '$postbox'
-CMD_EXIT = '$quit'
 
 current_chat = None
 postbox = []
@@ -88,8 +77,8 @@ def send_messages(sock):
     while True:
         #TODO: treats exit command
         text: str = read_input('>')
-        if text in SERVER_CMDS:
-            message = Message(username, SERVER_USERNAME, text, datetime.now())
+        if text in CMD_LIST_USERS:
+            message = Message(username, SERVER_NAME, text, datetime.now())
             sock.send(pickle.dumps(message))
         else:
             if text.startswith(CMD_CHAT):
@@ -117,7 +106,7 @@ def main():
 
     # created the socket that will be responsible for receiving messages from the server
     sock = socket.socket()
-    sock.connect((HOST, PORT))
+    sock.connect((HOST, SERVER_PORT))
 
     # reads the username and verifies availability. If not, user must enter a new value   
     while True:
