@@ -42,12 +42,12 @@ def create_join_message(sock_type: str):
     '''
     return Message(username, 'SERVER', f'$register {sock_type}', datetime.now())
 
-def listen_messages(sock):
+def receive_messages(sock):
     '''Listens messages received from the server.
     If the client is inside a chat with the message sender or is not inside any chat, 
     displays the message on the screen.
     Otherwise, puts the message in the postbox.
-    This function should be passed to the receiver_sock's Thread.
+    This function should be passed to the sock's Thread.
     '''
     global current_chat
     global postbox
@@ -109,35 +109,29 @@ def send_messages(sock):
 def username_available(username: str):
     '''Sends a message to SERVER in order to enforce username uniqueness.'''
 
-
-    pass
+    #TODO
+    return True
 
 def main():
     global username
 
-    # creates the socket that will be responsible for sending messages to the server
-    sender_sock = socket.socket()
-    sender_sock.connect((HOST, PORT))
-
     # created the socket that will be responsible for receiving messages from the server
-    receiver_sock = socket.socket()
-    receiver_sock.connect((HOST, PORT))
+    sock = socket.socket()
+    sock.connect((HOST, PORT))
 
     # reads the username and verifies availability. If not, user must enter a new value   
     username = input('Digite o nome de usuário: ')
     while not username_available(username):
         username = input('Nome de usuário indisponível. Digite outro nome de usuário: ')
 
-    # send two messages to the server, indicating which socket is the sender and receiver
-    join_sender = create_join_message('sender')
+    # send a message to the server, vinculating username and socket on the server side
     join_receiver = create_join_message('receiver')
-    receiver_sock.send(pickle.dumps(join_receiver))
-    sender_sock.send(pickle.dumps(join_sender))
+    sock.send(pickle.dumps(join_receiver))
 
-    thread_receiver = threading.Thread(target=listen_messages, args=(receiver_sock,))
+    thread_receiver = threading.Thread(target=receive_messages, args=(sock,))
     thread_receiver.start()
 
-    thread_sender = threading.Thread(target=send_messages, args=(sender_sock,))
+    thread_sender = threading.Thread(target=send_messages, args=(sock,))
     thread_sender.start()
 
 if __name__ == '__main__':
