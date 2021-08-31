@@ -92,10 +92,26 @@ def requestHandler(cliSckt, address):
         if message.receiver == 'SERVER':
             if message.content in LIST_USERS:
                 response = Message('SERVER', message.sender, list(receivers.keys()), datetime.now())
-                print('enviando de volta')
                 receivers[message.sender].send(pickle.dumps(response))
-                print('enviei')
-            #TODO: tratar comando
+                print(f'Lista de usuários enviada para {message.sender}')
+            elif message.content == EXIT_KEYWORD:
+                # Garante que o server pode enviar o ack apos deletar registros do cliente
+                sender = message.sender
+                sender_sock = receivers[sender]
+
+                # Envia sinal de acknowladge para que cliente desconecte: 200 = OK, 500 = Erro
+                lock.acquire()
+                if receivers.pop(sender, False):
+                    lock.release()
+                    response = Message('SERVER', sender, '200', datetime.now())
+                    sender_sock.send(pickle.dumps(response))
+
+                    cliSckt.close()
+                    break
+                else:
+                    lock.release()
+                    response = Message('SERVER', sender, '500', datetime.now())
+                    sender_sock.send(pickle.dumps(response))
         else:
             addressee_sock = receivers[message.receiver]
             addressee_sock.send(data)
@@ -141,4 +157,5 @@ def main():
         sckt.close()
     pass
 
-main()
+if __name__ == "__main__":
+    main()

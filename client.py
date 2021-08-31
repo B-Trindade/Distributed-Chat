@@ -12,15 +12,18 @@ ENCODING = 'utf-8'
 SERVER_USERNAME = 'SERVER'
 
 # Commands
-SERVER_CMDS = ['$lu', '$list users']
+CMD_LIST_USERS = ['$lu', '$list users']
 CMD_CHAT = '$chat'
 CMD_END_CHAT = '$end'
 CMD_POSTBOX = '$postbox'
-CMD_EXIT = '$quit'
+CMD_QUIT = '$quit'
 
 current_chat = None
 postbox = []
 username: str
+
+# Lock para acessar o dicionario de conexoes
+lock = threading.Lock()
 
 def read_input(hint):
     '''Reads the input unitl it's a valid input.
@@ -67,7 +70,11 @@ def inside_chat(addressee: str, sender_sock):
     When the user types the end command, the chat is ended.
     '''
     global current_chat
+
+    lock.acquire()
     current_chat = addressee
+    lock.release()
+
     print('--------------------------------')
     print(f'Você agora está em um chat com {addressee}. Digite aqui para enviar mensagens direto para este usuário!\n')
     while True:
@@ -85,10 +92,27 @@ def send_messages(sock):
     This function should be passed to the sender_sock's Thread.
     '''
     global postbox
+    global threads
+
     while True:
-        #TODO: treats exit command
         text: str = read_input('>')
-        if text in SERVER_CMDS:
+
+        if text == CMD_QUIT:
+            message = Message(username, SERVER_USERNAME, text, datetime.now())
+            sock.send(pickle.dumps(message))
+
+            # Espera por reconhecimento do server (sinal de OK) TODO: passar para função separada
+            data = sock.recv(1024)
+            ack: Message = pickle.loads(data)
+            if ack.content == '200':
+                sock.close()
+                raise SystemExit()
+            elif ack.content == '500':
+                print('SERVER> Erro não esperado. Tente novamente em alguns instantes.')
+            else:
+                print('Erro crítico! Encerrando todos os serviços...')
+                #TODO maybe?
+        elif text in CMD_LIST_USERS:
             message = Message(username, SERVER_USERNAME, text, datetime.now())
             sock.send(pickle.dumps(message))
         else:
@@ -104,16 +128,15 @@ def send_messages(sock):
             elif text == CMD_POSTBOX:
                 for m in postbox:
                     display_message(m, True)
+                
+                # Esvazia a caixa de mensagens
+                lock.acquire()
                 postbox = []
-
-def username_available(username: str):
-    '''Sends a message to SERVER in order to enforce username uniqueness.'''
-
-    #TODO
-    return True
+                lock.release()
 
 def main():
     global username
+    global threads
 
     # created the socket that will be responsible for receiving messages from the server
     sock = socket.socket()
@@ -131,6 +154,7 @@ def main():
             print('Nome de usuário indisponível.')
 
     thread_receiver = threading.Thread(target=receive_messages, args=(sock,))
+    thread_receiver.daemon = True
     thread_receiver.start()
 
     thread_sender = threading.Thread(target=send_messages, args=(sock,))
