@@ -107,28 +107,29 @@ def send_messages(sock):
         elif text in CMD_LIST_USERS:
             message = Message(username, SERVER_NAME, text, datetime.now())
             sock.send(pickle.dumps(message))
-        else:
-            if text.startswith(CMD_CHAT):
-                try:
-                    addressee = text.split(' ')[1]
-                except:
-                    print(f'Uso indevido do comando {CMD_CHAT}. Por favor digite o nome do usuário após o comando.')
-                    continue
+        elif text.startswith(CMD_CHAT):
+            try:
+                addressee = text.split(' ')[1]
+            except:
+                print(f'Uso indevido do comando {CMD_CHAT}. Por favor digite o nome do usuário após o comando.')
+                continue
 
-                # Verifica se usuario escolheu um cliente diferente de si mesmo para iniciar um chat
-                if addressee == username:
-                    print(f'Função de chat com "{username}" não suportada. Por favor, escolha um usuário diferente de si para conversar.')
-                else:
-                    inside_chat(addressee, sock)
-                    print(f'Chat encerrado. Você possui {len(postbox)} novas mensagens. Digite {CMD_POSTBOX} para visualizá-las!\n')
-            elif text == CMD_POSTBOX:
-                for m in postbox:
-                    display_message(m, True)
-                
-                # Esvazia a caixa de mensagens
-                lock.acquire()
-                postbox = []
-                lock.release()
+            # Verifica se usuario escolheu um cliente diferente de si mesmo para iniciar um chat
+            if addressee == username:
+                print(f'Função de chat com "{username}" não suportada. Por favor, escolha um usuário diferente de si para conversar.')
+            else:
+                inside_chat(addressee, sock)
+                print(f'Chat encerrado. Você possui {len(postbox)} novas mensagens. Digite {CMD_POSTBOX} para visualizá-las!\n')
+        elif text == CMD_POSTBOX:
+            for m in postbox:
+                display_message(m, True)
+            
+            # Esvazia a caixa de mensagens
+            lock.acquire()
+            postbox = []
+            lock.release()
+        else:
+            print(f'O comando digitado não é válido. Para enviar mensagens a algum usuário, use o comando {CMD_CHAT}')
 
 def main():
     global username
