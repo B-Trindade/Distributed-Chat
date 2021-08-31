@@ -137,7 +137,15 @@ def main():
 
     # created the socket that will be responsible for receiving messages from the server
     sock = socket.socket()
-    sock.connect((HOST, SERVER_PORT))
+    
+    try:
+        sock.connect((HOST, SERVER_PORT))
+    except socket.gaierror as e:
+        print('Falha durante tentativa de conectar com: %s' % e)
+        sys.exit()
+    except socket.error as e:
+        print('Erro de conexao: %s' % e)
+        sys.exit()
 
     # reads the username and verifies availability. If not, user must enter a new value   
     while True:
