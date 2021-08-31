@@ -128,6 +128,7 @@ def requestHandler(cliSckt, address):
                 addressee_sock.send(data)
 
 def main():
+    sckt = None
     try:
         sckt = initServer()
         print('Pronto para receber conexoes...')
@@ -165,7 +166,8 @@ def main():
         print('Erro: %s' % e)
         sys.exit()
     finally:
-        sckt.close()
+        if sckt:
+            sckt.close()
     pass
 
 if __name__ == "__main__":
