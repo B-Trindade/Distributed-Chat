@@ -109,7 +109,12 @@ def send_messages(sock):
             sock.send(pickle.dumps(message))
         else:
             if text.startswith(CMD_CHAT):
-                addressee = text.split(' ')[1]
+                try:
+                    addressee = text.split(' ')[1]
+                except:
+                    print(f'Uso indevido do comando {CMD_CHAT}. Por favor digite o nome do usuário após o comando.')
+                    continue
+                print('nao deia printar')
 
                 # Verifica se usuario escolheu um cliente diferente de si mesmo para iniciar um chat
                 if addressee == username:
