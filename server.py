@@ -3,7 +3,7 @@ Server recebe novas conexoes de usuarios a qualquer momento.
 Tambem fica responsavel pela parte do processamento de listar os usuarios ativos
 """
 
-from constants import CMD_LIST_USERS, CMD_QUIT, SERVER_NAME, SERVER_PORT
+from constants import CMD_CHAT, CMD_LIST_USERS, CMD_QUIT, SERVER_NAME, SERVER_PORT
 import sys
 import socket
 import threading
@@ -58,6 +58,10 @@ def acceptConnection(sckt):
             response = Message(SERVER_NAME, None, False, datetime.now())
             newSckt.send(pickle.dumps(response))
 
+    welcome_msg = Message(SERVER_NAME, message.content, 
+        f'Bem vindo {message.content}! Aqui está a lista dos usuários disponíveis: {list(usernames.keys())}\n'
+        f'Para iniciar um chat basta digitar "{CMD_CHAT} <USER_NAME>"', datetime.now())
+    newSckt.send(pickle.dumps(welcome_msg))
     print(f'Conectado com: {str(address)}, username: {message.content}') # Log de conexao com endereco <address>
 
     return newSckt, address
