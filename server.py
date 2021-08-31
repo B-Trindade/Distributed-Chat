@@ -33,15 +33,6 @@ lock = threading.Lock()
 # username to sock
 receivers = dict()
 
-def validateUsername(username: str) -> bool:
-    '''TODO'''
-
-    if username in usernames:
-        return False
-    else:
-        usernames.append(username)
-        return True
-
 def initServer():
     """Inicia o socket: internet IPv4 + TCP"""
 
@@ -57,17 +48,26 @@ def initServer():
 
 def acceptConnection(sckt):
     """Aceita a conexao com o cliente"""
-
+    global receivers
     newSckt, address = sckt.accept()
-    data = newSckt.recv(1024)
-    message: Message = pickle.loads(data)
 
-    if message.content == '$register receiver':
-        lock.acquire()
-        receivers[message.sender] = newSckt
-        lock.release()
+    while True:
+        data = newSckt.recv(1024)
+        message: Message = pickle.loads(data)
 
-    print(f'Conectado com: {str(address)}, username: {message.sender} // {message.content}') # Log de conexao com endereco <address>
+        new_username = message.content
+        if new_username not in receivers.keys():
+            lock.acquire()
+            receivers[message.content] = newSckt
+            lock.release()
+            response = Message(SERVER_ID, new_username, True, datetime.now())
+            newSckt.send(pickle.dumps(response))
+            break
+        else:
+            response = Message(SERVER_ID, None, False, datetime.now())
+            newSckt.send(pickle.dumps(response))
+
+    print(f'Conectado com: {str(address)}, username: {message.content}') # Log de conexao com endereco <address>
 
     return newSckt, address
 
@@ -78,7 +78,7 @@ def internalCommandHandler(cmd: str, sckt, clients: list):
         sckt.close()
         sys.exit()
     elif cmd in LIST_USERS:
-        user_list = listActiveUsers()
+        pass #user_list = listActiveUsers()
 
 def requestHandler(cliSckt, address):
     """Recebe requests dos clientes conectados"""

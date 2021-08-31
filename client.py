@@ -22,11 +22,11 @@ current_chat = None
 postbox = []
 username: str
 
-def read_input():
+def read_input(hint):
     '''Reads the input unitl it's a valid input.
     '''
     while True:
-        text = input('>')
+        text = input(hint)
         if len(text) > 0:
             return text
 
@@ -37,10 +37,10 @@ def display_message(message: Message, show_time = False):
     time = f'[{message.timestamp}] ' if show_time else ''
     print(f'{time}{message.sender}: {message.content}')
 
-def create_join_message(sock_type: str):
+def create_join_message():
     '''Create a message to register the socket on the server.
     '''
-    return Message(username, 'SERVER', f'$register {sock_type}', datetime.now())
+    return Message(None, 'SERVER', username, datetime.now())
 
 def receive_messages(sock):
     '''Listens messages received from the server.
@@ -71,7 +71,7 @@ def inside_chat(addressee: str, sender_sock):
     print('--------------------------------')
     print(f'Você agora está em um chat com {addressee}. Digite aqui para enviar mensagens direto para este usuário!\n')
     while True:
-        text = read_input()
+        text = read_input('>')
         if text == CMD_END_CHAT:
             current_chat = None
             break
@@ -87,7 +87,7 @@ def send_messages(sock):
     global postbox
     while True:
         #TODO: treats exit command
-        text: str = read_input()
+        text: str = read_input('>')
         if text in SERVER_CMDS:
             message = Message(username, SERVER_USERNAME, text, datetime.now())
             sock.send(pickle.dumps(message))
@@ -120,13 +120,15 @@ def main():
     sock.connect((HOST, PORT))
 
     # reads the username and verifies availability. If not, user must enter a new value   
-    username = input('Digite o nome de usuário: ')
-    while not username_available(username):
-        username = input('Nome de usuário indisponível. Digite outro nome de usuário: ')
-
-    # send a message to the server, vinculating username and socket on the server side
-    join_receiver = create_join_message('receiver')
-    sock.send(pickle.dumps(join_receiver))
+    while True:
+        username = read_input('Digite o nome de usuário: ')
+        join_message = create_join_message()
+        sock.send(pickle.dumps(join_message))
+        response: Message = pickle.loads(sock.recv(1024))
+        if response.content:
+            break
+        else:
+            print('Nome de usuário indisponível.')
 
     thread_receiver = threading.Thread(target=receive_messages, args=(sock,))
     thread_receiver.start()
