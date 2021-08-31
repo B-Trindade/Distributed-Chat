@@ -68,8 +68,8 @@ def acceptConnection(sckt):
 
 def internalCommandHandler(cmd: str, sckt, clients: list):
     if cmd == CMD_QUIT:
-        for c in clients:
-            c.join()
+        print('!-----AVISO-----!')
+        print('Servidor está fechado para novas conexões. Aguardando clientes desconectarem...')
         sckt.close()
         sys.exit()
     elif cmd in CMD_LIST_USERS:
