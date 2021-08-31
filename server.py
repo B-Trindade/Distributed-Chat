@@ -3,7 +3,7 @@ Server recebe novas conexoes de usuarios a qualquer momento.
 Tambem fica responsavel pela parte do processamento de listar os usuarios ativos
 """
 
-from constants import SERVER_PORT
+from constants import CMD_LIST_USERS, CMD_QUIT, SERVER_NAME, SERVER_PORT
 import sys
 import socket
 import threading
@@ -13,12 +13,6 @@ import pickle
 from message import Message
 
 HOST = ''
-SERVER_ID = 0 # Mudar para string? TODO
-
-# Lista de comandos
-EXIT_KEYWORD = '$quit'
-LIST_USERS = ['$list users', '$lu']
-CHAT_REQUEST = '$chat'
 
 # Entradas para escuta do select
 entry_points = [sys.stdin]
@@ -55,15 +49,15 @@ def acceptConnection(sckt):
         message: Message = pickle.loads(data)
 
         new_username = message.content
-        if new_username not in receivers.keys():
+        if new_username not in receivers.keys() and new_username != SERVER_NAME:
             lock.acquire()
             receivers[message.content] = newSckt
             lock.release()
-            response = Message(SERVER_ID, new_username, True, datetime.now())
+            response = Message(SERVER_NAME, new_username, True, datetime.now())
             newSckt.send(pickle.dumps(response))
             break
         else:
-            response = Message(SERVER_ID, None, False, datetime.now())
+            response = Message(SERVER_NAME, None, False, datetime.now())
             newSckt.send(pickle.dumps(response))
 
     print(f'Conectado com: {str(address)}, username: {message.content}') # Log de conexao com endereco <address>
@@ -71,12 +65,12 @@ def acceptConnection(sckt):
     return newSckt, address
 
 def internalCommandHandler(cmd: str, sckt, clients: list):
-    if cmd == EXIT_KEYWORD:
+    if cmd == CMD_QUIT:
         for c in clients:
             c.join()
         sckt.close()
         sys.exit()
-    elif cmd in LIST_USERS:
+    elif cmd in CMD_LIST_USERS:
         pass #user_list = listActiveUsers()
 
 def requestHandler(cliSckt, address):
@@ -89,11 +83,11 @@ def requestHandler(cliSckt, address):
         message: Message = pickle.loads(data)
 
         if message.receiver == 'SERVER':
-            if message.content in LIST_USERS:
+            if message.content in CMD_LIST_USERS:
                 response = Message('SERVER', message.sender, list(receivers.keys()), datetime.now())
                 receivers[message.sender].send(pickle.dumps(response))
                 print(f'Lista de usuários enviada para {message.sender}')
-            elif message.content == EXIT_KEYWORD:
+            elif message.content == CMD_QUIT:
                 # Garante que o server pode enviar o ack apos deletar registros do cliente
                 sender = message.sender
                 sender_sock = receivers[sender]
@@ -119,7 +113,7 @@ def main():
     try:
         sckt = initServer()
         print('Pronto para receber conexoes...')
-        print(f'Para encerrar o servico, digite "{EXIT_KEYWORD}".')
+        print(f'Para encerrar o servico, digite "{CMD_QUIT}".')
         entry_points.append(sckt)
 
         # Lista de threads ativas
