@@ -106,8 +106,13 @@ def requestHandler(cliSckt, address):
                     response = Message('SERVER', sender, '500', datetime.now())
                     sender_sock.send(pickle.dumps(response))
         else:
-            addressee_sock = receivers[message.receiver]
-            addressee_sock.send(data)
+            if message.receiver not in receivers.keys():
+                response = Message(SERVER_NAME, message.sender, 
+                    f'O usuário {message.receiver} não está mais disponível.', datetime.now())
+                cliSckt.send(pickle.dumps(response))
+            else:
+                addressee_sock = receivers[message.receiver]
+                addressee_sock.send(data)
 
 def main():
     try:

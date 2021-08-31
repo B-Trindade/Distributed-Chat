@@ -49,7 +49,7 @@ def receive_messages(sock):
         if current_chat is None:
             display_message(message)
         else:
-            if message.sender == current_chat:
+            if message.sender == current_chat or message.sender == SERVER_NAME:
                 display_message(message)
             else:
                 postbox.append(message)
